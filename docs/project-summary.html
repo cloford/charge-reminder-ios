@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>充電忘れ防止リマインダー プロジェクト資料 v0.1</title>
+  <style>
+    @page { size: A4; margin: 18mm 16mm; }
+    body {
+      font-family: "Yu Gothic", "Meiryo", sans-serif;
+      color: #1f2933;
+      line-height: 1.65;
+      font-size: 11pt;
+    }
+    h1 { font-size: 22pt; margin: 0 0 12px; }
+    h2 { font-size: 15pt; margin: 26px 0 8px; border-bottom: 1px solid #d7dde5; padding-bottom: 4px; }
+    h3 { font-size: 12.5pt; margin: 18px 0 6px; }
+    p { margin: 6px 0; }
+    ul { margin: 6px 0 10px 22px; padding: 0; }
+    li { margin: 2px 0; }
+    table { width: 100%; border-collapse: collapse; margin: 8px 0 14px; font-size: 10pt; }
+    th, td { border: 1px solid #cfd6df; padding: 6px 8px; vertical-align: top; }
+    th { background: #eef2f6; text-align: left; }
+    code { font-family: Consolas, monospace; background: #f3f5f7; padding: 1px 4px; border-radius: 3px; }
+    .meta { color: #52606d; font-size: 10pt; margin-bottom: 18px; }
+    .note { background: #f6f8fa; border-left: 4px solid #7b8794; padding: 8px 12px; margin: 10px 0; }
+    .page-break { page-break-before: always; }
+  </style>
+</head>
+<body>
+  <h1>充電忘れ防止リマインダー プロジェクト資料 v0.1</h1>
+  <div class="meta">
+    作成日: 2026-05-19 / GitHub: https://github.com/cloford/charge-reminder-ios.git / Bundle ID: <code>com.cloford.chargereminder</code>
+  </div>
+
+  <h2>1. プロジェクト概要</h2>
+  <p>本プロジェクトは、就寝前や深夜にiPhoneの充電忘れを防ぐためのiOSアプリをApp Store公開することを目的とする。</p>
+  <p>初期案は「0時を超えた時に電池が50%以下なら通知」だったが、iOSのバックグラウンド制約により、MVPでは「指定時刻に充電確認通知を出し、アプリ起動時・復帰時にバッテリー状態を確認する」仕様へ整理した。</p>
+
+  <h2>2. 課題定義</h2>
+  <table>
+    <tr><th>項目</th><th>内容</th></tr>
+    <tr><td>対象ユーザー</td><td>寝落ちしやすい人、就寝前に充電を忘れがちな人、翌朝のバッテリー不足で困った経験がある人。</td></tr>
+    <tr><td>困りごと</td><td>朝にiPhoneのバッテリーが不足し、アラーム・外出・通勤・仕事に支障が出る。</td></tr>
+    <tr><td>解決方針</td><td>寝る前から深夜にかけて段階的に充電確認を促し、アプリ上で現在の状態と充電推奨を表示する。</td></tr>
+  </table>
+
+  <h2>3. MVP定義</h2>
+  <p>MVPは「ユーザーに価値を届けられる最小限の製品」とする。単に機能が少ないだけではなく、充電忘れ防止という課題を最低限解ける必要がある。</p>
+  <h3>MVPに入れる機能</h3>
+  <ul>
+    <li>最大3件の通知時刻設定</li>
+    <li>初期通知時刻: 22:00 / 23:00 / 0:00</li>
+    <li>各通知のON/OFF</li>
+    <li>各通知時刻の変更</li>
+    <li>起床予定時刻の設定</li>
+    <li>バッテリーしきい値の設定。初期値は50%</li>
+    <li>ローカル通知による充電確認</li>
+    <li>アプリ起動時・復帰時のバッテリー残量と充電状態表示</li>
+    <li>安全 / 注意 / 充電推奨の判定表示</li>
+    <li>充電習慣スコア</li>
+    <li>iOS制約の説明</li>
+  </ul>
+  <h3>MVPでやらないこと</h3>
+  <ul>
+    <li>標準時計アプリのアラーム操作</li>
+    <li>必ず鳴るアラーム保証</li>
+    <li>バックグラウンド常時バッテリー監視</li>
+    <li>0時ちょうどに50%以下かを判定して通知を出し分ける挙動</li>
+    <li>高精度なバッテリー消費予測</li>
+    <li>自由な条件ルール作成</li>
+  </ul>
+
+  <h2>4. iOS制約と技術方針</h2>
+  <table>
+    <tr><th>論点</th><th>判断</th></tr>
+    <tr><td>バックグラウンド実行</td><td>指定時刻ぴったりにアプリが起きてバッテリー判定する保証はない。MVPではBackground Tasksを使わない。</td></tr>
+    <tr><td>ローカル通知</td><td><code>UNUserNotificationCenter</code> と <code>UNCalendarNotificationTrigger</code> で毎日指定時刻に通知する。</td></tr>
+    <tr><td>バッテリー取得</td><td><code>UIDevice.current.isBatteryMonitoringEnabled = true</code> を使い、起動時・復帰時に取得する。</td></tr>
+    <tr><td>標準アラーム</td><td>サードパーティアプリから時計アプリのアラームを自由に作成・変更する前提にはしない。</td></tr>
+    <tr><td>保存方式</td><td>MVPでは <code>UserDefaults</code> を使う。</td></tr>
+  </table>
+
+  <h2>5. 画面仕様</h2>
+  <p>画面構成は4タブで固定する。</p>
+  <table>
+    <tr><th>タブ</th><th>役割</th></tr>
+    <tr><td>ホーム</td><td>現在のバッテリー状態、充電推奨、次回通知、起床時刻、今日のスコアを表示。</td></tr>
+    <tr><td>通知</td><td>3件の通知時刻、ON/OFF、時刻変更を管理。</td></tr>
+    <tr><td>スコア</td><td>今日のスコア、直近7日平均、スコア内訳を表示。</td></tr>
+    <tr><td>設定</td><td>起床時刻、しきい値、通知許可状態、iOS制約説明を表示。</td></tr>
+  </table>
+
+  <h2>6. 通知仕様</h2>
+  <ul>
+    <li>初期通知時刻は22:00、23:00、0:00。</li>
+    <li>通知は最大3件固定。自由追加はMVP対象外。</li>
+    <li>各通知はON/OFF可能。</li>
+    <li>各通知時刻は変更可能。</li>
+    <li>通知はバッテリー条件で出し分けず、指定時刻に充電確認として出す。</li>
+  </ul>
+  <div class="note">通知はiOSの通知設定、集中モード、消音設定などの影響を受ける。アプリ内・App Store説明では「必ず鳴る」と表現しない。</div>
+
+  <h2>7. バッテリー判定仕様</h2>
+  <table>
+    <tr><th>条件</th><th>表示</th></tr>
+    <tr><td>充電中</td><td>安全</td></tr>
+    <tr><td>充電完了</td><td>安全</td></tr>
+    <tr><td>未接続かつ80%以上</td><td>安全</td></tr>
+    <tr><td>未接続かつ50〜79%</td><td>注意</td></tr>
+    <tr><td>未接続かつ49%以下</td><td>充電推奨</td></tr>
+    <tr><td>起床まで8時間以上かつ60%未満</td><td>充電推奨</td></tr>
+    <tr><td>状態取得不可</td><td>状態不明</td></tr>
+  </table>
+  <p>ユーザー向け表記は「満充電」ではなく「充電完了」に統一する。</p>
+
+  <h2>8. 充電習慣スコア</h2>
+  <table>
+    <tr><th>要素</th><th>点数</th></tr>
+    <tr><td>通知後にアプリを開いた</td><td>+1</td></tr>
+    <tr><td>アプリ確認時に充電中または充電完了だった</td><td>+1</td></tr>
+    <tr><td>翌朝、バッテリーがしきい値以上だった</td><td>+1</td></tr>
+  </table>
+  <p>同じ条件は1日1回だけ加点する。翌朝判定は、起床予定時刻以降にアプリを開いた時に行う。</p>
+
+  <h2>9. QA観点</h2>
+  <table>
+    <tr><th>優先度</th><th>確認項目</th></tr>
+    <tr><td>高</td><td>通知許可、指定時刻通知、通知ON/OFF、通知時刻変更。</td></tr>
+    <tr><td>高</td><td>バッテリー残量取得、充電状態取得、充電完了表記。</td></tr>
+    <tr><td>高</td><td>安全 / 注意 / 充電推奨の判定。</td></tr>
+    <tr><td>高</td><td>通知未許可時の表示。</td></tr>
+    <tr><td>高</td><td>App Store文言に過剰な保証がないこと。</td></tr>
+    <tr><td>中</td><td>スコア、7日平均、日またぎ、端末再起動後の設定復元。</td></tr>
+  </table>
+
+  <h2>10. App Store審査リスク</h2>
+  <h3>避ける表現</h3>
+  <ul>
+    <li>必ず通知します</li>
+    <li>必ず起こします</li>
+    <li>目覚ましアラームの代わりになります</li>
+    <li>0時にバッテリー50%以下なら自動通知</li>
+    <li>バックグラウンドで常時監視します</li>
+    <li>バッテリー切れを完全に防止します</li>
+  </ul>
+  <h3>使う表現</h3>
+  <ul>
+    <li>就寝前の充電忘れを防ぐリマインダー</li>
+    <li>指定した時刻に充電確認を促します</li>
+    <li>アプリ起動時・復帰時にバッテリー状態を確認できます</li>
+    <li>通知はiOSの通知設定に依存します</li>
+    <li>目覚ましアラームの代替ではありません</li>
+  </ul>
+
+  <h2>11. 技術設計</h2>
+  <table>
+    <tr><th>領域</th><th>方針</th></tr>
+    <tr><td>アーキテクチャ</td><td>軽量MVVM。View、ViewModel、Model、Serviceに分ける。</td></tr>
+    <tr><td>通知</td><td><code>NotificationService</code> が許可取得、状態取得、予約、削除、更新を担当。</td></tr>
+    <tr><td>バッテリー</td><td><code>BatteryService</code> が残量と充電状態を取得。</td></tr>
+    <tr><td>設定保存</td><td><code>SettingsStore</code> が通知設定、起床時刻、しきい値を保存。</td></tr>
+    <tr><td>スコア</td><td><code>ScoreStore</code> が日別スコアと7日平均を管理。</td></tr>
+    <tr><td>判定</td><td><code>BatteryJudgement</code> が安全 / 注意 / 充電推奨を返す。</td></tr>
+  </table>
+
+  <h2>12. 現在の実装状況</h2>
+  <ul>
+    <li>Xcodeプロジェクト骨格を作成済み。</li>
+    <li>SwiftUI 4タブを実装済み。</li>
+    <li>UserDefaults保存を実装済み。</li>
+    <li>ローカル通知の許可・予約・ON/OFFを実装済み。</li>
+    <li>バッテリー残量・充電状態取得を実装済み。</li>
+    <li>Windows環境のため、Xcodeビルドと実機検証は未実施。</li>
+  </ul>
+
+  <h2>13. 次回Mac購入後に行うこと</h2>
+  <ol>
+    <li>GitHubからリポジトリをcloneする。</li>
+    <li>Xcodeで <code>ChargeReminder.xcodeproj</code> を開く。</li>
+    <li>ビルドエラーを確認・修正する。</li>
+    <li>iPhone SE 第2世代に実機インストールする。</li>
+    <li>通知許可、指定時刻通知、バッテリー残量、充電状態を検証する。</li>
+    <li>検証結果をもとにスプリント2へ進む。</li>
+  </ol>
+</body>
+</html>
