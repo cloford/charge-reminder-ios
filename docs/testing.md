@@ -7,12 +7,12 @@
 MacとXcodeがある環境では、次のコマンドでビルドとUnit Testを確認します。
 
 ```sh
-DESTINATION="$(xcodebuild -project ChargeReminder.xcodeproj -scheme ChargeReminder -showdestinations 2>/dev/null | awk -F'[{}]' '/platform:iOS Simulator/ && /id:/ && $0 !~ /placeholder/ { print $2; exit }')"
+DEVICE_ID="$(xcrun simctl list devices available | awk -F'[()]' '/^-- iOS / { ios = 1; next } /^--/ { ios = 0 } ios && /\([0-9A-F-]{36}\)/ { print $2; exit }')"
 
 xcodebuild test \
   -project ChargeReminder.xcodeproj \
   -scheme ChargeReminder \
-  -destination "$DESTINATION" \
+  -destination "platform=iOS Simulator,id=${DEVICE_ID}" \
   -derivedDataPath /tmp/charge-reminder-dd \
   CODE_SIGNING_ALLOWED=NO
 ```

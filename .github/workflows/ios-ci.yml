@@ -25,10 +25,12 @@ jobs:
       - name: Run unit tests
         run: |
           set -o pipefail
-          DESTINATION="$(xcodebuild -project ChargeReminder.xcodeproj -scheme ChargeReminder -showdestinations 2>/dev/null | awk -F'[{}]' '/platform:iOS Simulator/ && /id:/ && $0 !~ /placeholder/ { print $2; exit }')"
-          if [ -z "$DESTINATION" ]; then
-            DESTINATION="platform=iOS Simulator,name=iPhone 16"
+          DEVICE_ID="$(xcrun simctl list devices available | awk -F'[()]' '/^-- iOS / { ios = 1; next } /^--/ { ios = 0 } ios && /\([0-9A-F-]{36}\)/ { print $2; exit }')"
+          if [ -z "$DEVICE_ID" ]; then
+            echo "No available iOS Simulator device found."
+            exit 1
           fi
+          DESTINATION="platform=iOS Simulator,id=${DEVICE_ID}"
           echo "Using destination: $DESTINATION"
           xcodebuild test \
             -project ChargeReminder.xcodeproj \
