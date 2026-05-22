@@ -1,0 +1,38 @@
+name: iOS CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: Unit Tests
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: List available simulators
+        run: xcrun simctl list devices available
+
+      - name: Run unit tests
+        run: |
+          set -o pipefail
+          DESTINATION="$(xcodebuild -project ChargeReminder.xcodeproj -scheme ChargeReminder -showdestinations 2>/dev/null | awk -F'[{}]' '/platform:iOS Simulator/ && /id:/ && $0 !~ /placeholder/ { print $2; exit }')"
+          if [ -z "$DESTINATION" ]; then
+            DESTINATION="platform=iOS Simulator,name=iPhone 16"
+          fi
+          echo "Using destination: $DESTINATION"
+          xcodebuild test \
+            -project ChargeReminder.xcodeproj \
+            -scheme ChargeReminder \
+            -destination "$DESTINATION" \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO

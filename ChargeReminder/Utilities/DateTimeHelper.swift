@@ -1,8 +1,12 @@
 import Foundation
 
 enum DateTimeHelper {
-    static func date(from hour: Int, minute: Int, relativeTo baseDate: Date = Date()) -> Date {
-        let calendar = Calendar.current
+    static func date(
+        from hour: Int,
+        minute: Int,
+        relativeTo baseDate: Date = Date(),
+        calendar: Calendar = .current
+    ) -> Date {
         var components = calendar.dateComponents([.year, .month, .day], from: baseDate)
         components.hour = hour
         components.minute = minute
@@ -19,14 +23,19 @@ enum DateTimeHelper {
         return sameDayDate
     }
 
-    static func hoursUntil(hour: Int, minute: Int, from baseDate: Date = Date()) -> Double {
-        let targetDate = date(from: hour, minute: minute, relativeTo: baseDate)
+    static func hoursUntil(
+        hour: Int,
+        minute: Int,
+        from baseDate: Date = Date(),
+        calendar: Calendar = .current
+    ) -> Double {
+        let targetDate = date(from: hour, minute: minute, relativeTo: baseDate, calendar: calendar)
         return targetDate.timeIntervalSince(baseDate) / 3600
     }
 
-    static func dayKey(for date: Date = Date()) -> String {
+    static func dayKey(for date: Date = Date(), calendar: Calendar = .current) -> String {
         let formatter = DateFormatter()
-        formatter.calendar = Calendar.current
+        formatter.calendar = calendar
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter.string(from: date)

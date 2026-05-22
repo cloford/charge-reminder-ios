@@ -5,10 +5,18 @@ final class HomeViewModel: ObservableObject {
     @Published private(set) var batteryStatus = BatteryStatus(level: nil, state: .unknown)
     @Published private(set) var recommendation: ChargeRecommendation = .unknown
 
-    private let batteryService: BatteryService
+    private let batteryService: BatteryServiceProtocol
+    private let nowProvider: () -> Date
+    private let calendar: Calendar
 
-    init(batteryService: BatteryService = BatteryService()) {
+    init(
+        batteryService: BatteryServiceProtocol = BatteryService(),
+        nowProvider: @escaping () -> Date = Date.init,
+        calendar: Calendar = .current
+    ) {
         self.batteryService = batteryService
+        self.nowProvider = nowProvider
+        self.calendar = calendar
     }
 
     func refresh(settingsStore: SettingsStore, scoreStore: ScoreStore) {
@@ -16,7 +24,9 @@ final class HomeViewModel: ObservableObject {
         recommendation = BatteryJudgement.recommendation(
             status: batteryStatus,
             wakeUpSetting: settingsStore.wakeUpSetting,
-            lowBatteryThreshold: settingsStore.lowBatteryThreshold
+            lowBatteryThreshold: settingsStore.lowBatteryThreshold,
+            now: nowProvider(),
+            calendar: calendar
         )
 
         if batteryStatus.state == .charging || batteryStatus.state == .full {
@@ -33,13 +43,12 @@ final class HomeViewModel: ObservableObject {
     func nextNotification(from settings: [NotificationSetting]) -> NotificationSetting? {
         let enabled = settings.filter(\.isEnabled)
         return enabled.min { lhs, rhs in
-            DateTimeHelper.date(from: lhs.hour, minute: lhs.minute) < DateTimeHelper.date(from: rhs.hour, minute: rhs.minute)
+            DateTimeHelper.date(from: lhs.hour, minute: lhs.minute, relativeTo: nowProvider(), calendar: calendar) < DateTimeHelper.date(from: rhs.hour, minute: rhs.minute, relativeTo: nowProvider(), calendar: calendar)
         }
     }
 
     private func isAfterWakeUp(_ wakeUpSetting: WakeUpSetting) -> Bool {
-        let calendar = Calendar.current
-        let nowComponents = calendar.dateComponents([.hour, .minute], from: Date())
+        let nowComponents = calendar.dateComponents([.hour, .minute], from: nowProvider())
         let nowMinutes = (nowComponents.hour ?? 0) * 60 + (nowComponents.minute ?? 0)
         let wakeMinutes = wakeUpSetting.hour * 60 + wakeUpSetting.minute
         return nowMinutes >= wakeMinutes

@@ -2,6 +2,8 @@ import Foundation
 
 @MainActor
 final class SettingsStore: ObservableObject {
+    private let userDefaults: UserDefaults
+
     @Published var notificationSettings: [NotificationSetting] {
         didSet { save(notificationSettings, forKey: Keys.notificationSettings) }
     }
@@ -11,18 +13,19 @@ final class SettingsStore: ObservableObject {
     }
 
     @Published var lowBatteryThreshold: Int {
-        didSet { UserDefaults.standard.set(lowBatteryThreshold, forKey: Keys.lowBatteryThreshold) }
+        didSet { userDefaults.set(lowBatteryThreshold, forKey: Keys.lowBatteryThreshold) }
     }
 
     @Published var hasCompletedOnboarding: Bool {
-        didSet { UserDefaults.standard.set(hasCompletedOnboarding, forKey: Keys.hasCompletedOnboarding) }
+        didSet { userDefaults.set(hasCompletedOnboarding, forKey: Keys.hasCompletedOnboarding) }
     }
 
-    init() {
-        notificationSettings = Self.load([NotificationSetting].self, forKey: Keys.notificationSettings) ?? NotificationSetting.defaultSettings
-        wakeUpSetting = Self.load(WakeUpSetting.self, forKey: Keys.wakeUpSetting) ?? WakeUpSetting.defaultValue
-        lowBatteryThreshold = UserDefaults.standard.object(forKey: Keys.lowBatteryThreshold) as? Int ?? 50
-        hasCompletedOnboarding = UserDefaults.standard.bool(forKey: Keys.hasCompletedOnboarding)
+    init(userDefaults: UserDefaults = .standard) {
+        self.userDefaults = userDefaults
+        notificationSettings = Self.load([NotificationSetting].self, forKey: Keys.notificationSettings, userDefaults: userDefaults) ?? NotificationSetting.defaultSettings
+        wakeUpSetting = Self.load(WakeUpSetting.self, forKey: Keys.wakeUpSetting, userDefaults: userDefaults) ?? WakeUpSetting.defaultValue
+        lowBatteryThreshold = userDefaults.object(forKey: Keys.lowBatteryThreshold) as? Int ?? 50
+        hasCompletedOnboarding = userDefaults.bool(forKey: Keys.hasCompletedOnboarding)
     }
 
     func updateNotification(_ setting: NotificationSetting) {
@@ -36,11 +39,11 @@ final class SettingsStore: ObservableObject {
         guard let data = try? JSONEncoder().encode(value) else {
             return
         }
-        UserDefaults.standard.set(data, forKey: key)
+        userDefaults.set(data, forKey: key)
     }
 
-    private static func load<T: Decodable>(_ type: T.Type, forKey key: String) -> T? {
-        guard let data = UserDefaults.standard.data(forKey: key) else {
+    private static func load<T: Decodable>(_ type: T.Type, forKey key: String, userDefaults: UserDefaults) -> T? {
+        guard let data = userDefaults.data(forKey: key) else {
             return nil
         }
         return try? JSONDecoder().decode(type, from: data)

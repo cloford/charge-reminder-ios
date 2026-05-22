@@ -1,6 +1,10 @@
 import UIKit
 
-final class BatteryService {
+protocol BatteryServiceProtocol {
+    func currentStatus() -> BatteryStatus
+}
+
+final class BatteryService: BatteryServiceProtocol {
     func startMonitoring() {
         UIDevice.current.isBatteryMonitoringEnabled = true
     }

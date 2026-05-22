@@ -2,22 +2,34 @@ import Foundation
 
 @MainActor
 final class ScoreStore: ObservableObject {
+    private let userDefaults: UserDefaults
+    private let dateProvider: () -> Date
+    private let calendar: Calendar
+
     @Published private(set) var scores: [ChargeScore] {
         didSet { saveScores() }
     }
 
-    init() {
-        scores = Self.loadScores()
+    init(
+        userDefaults: UserDefaults = .standard,
+        dateProvider: @escaping () -> Date = Date.init,
+        calendar: Calendar = .current
+    ) {
+        self.userDefaults = userDefaults
+        self.dateProvider = dateProvider
+        self.calendar = calendar
+        scores = Self.loadScores(userDefaults: userDefaults)
     }
 
     var todayScore: ChargeScore {
-        score(for: DateTimeHelper.dayKey())
+        score(for: DateTimeHelper.dayKey(for: dateProvider(), calendar: calendar))
     }
 
     var sevenDayAverage: Double {
-        let calendar = Calendar.current
         let keys = (0..<7).compactMap { offset in
-            calendar.date(byAdding: .day, value: -offset, to: Date()).map(DateTimeHelper.dayKey)
+            calendar.date(byAdding: .day, value: -offset, to: dateProvider()).map {
+                DateTimeHelper.dayKey(for: $0, calendar: calendar)
+            }
         }
 
         let totals = keys.map { score(for: $0).total }
@@ -38,7 +50,7 @@ final class ScoreStore: ObservableObject {
     }
 
     private func updateToday(_ update: (inout ChargeScore) -> Void) {
-        let key = DateTimeHelper.dayKey()
+        let key = DateTimeHelper.dayKey(for: dateProvider(), calendar: calendar)
         var score = score(for: key)
         update(&score)
         upsert(score)
@@ -60,11 +72,11 @@ final class ScoreStore: ObservableObject {
         guard let data = try? JSONEncoder().encode(scores) else {
             return
         }
-        UserDefaults.standard.set(data, forKey: Keys.scores)
+        userDefaults.set(data, forKey: Keys.scores)
     }
 
-    private static func loadScores() -> [ChargeScore] {
-        guard let data = UserDefaults.standard.data(forKey: Keys.scores),
+    private static func loadScores(userDefaults: UserDefaults) -> [ChargeScore] {
+        guard let data = userDefaults.data(forKey: Keys.scores),
               let decoded = try? JSONDecoder().decode([ChargeScore].self, from: data) else {
             return []
         }

@@ -5,7 +5,8 @@ enum BatteryJudgement {
         status: BatteryStatus,
         wakeUpSetting: WakeUpSetting,
         lowBatteryThreshold: Int,
-        now: Date = Date()
+        now: Date = Date(),
+        calendar: Calendar = .current
     ) -> ChargeRecommendation {
         guard let level = status.level else {
             return .unknown
@@ -18,7 +19,8 @@ enum BatteryJudgement {
         let hoursUntilWakeUp = DateTimeHelper.hoursUntil(
             hour: wakeUpSetting.hour,
             minute: wakeUpSetting.minute,
-            from: now
+            from: now,
+            calendar: calendar
         )
 
         if hoursUntilWakeUp >= 8, level < 60 {
