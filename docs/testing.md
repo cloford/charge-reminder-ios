@@ -1,6 +1,6 @@
 # テストとTestFlight配布手順
 
-このリポジトリは、Unit Testでロジックを確認し、TestFlightで友人と自分のiPhoneに配布する前提です。
+このリポジトリは、Unit Testでロジックを確認し、XcodeからTestFlightへアップロードして友人と自分のiPhoneに配布する前提です。
 
 ## ローカル確認
 
@@ -23,22 +23,7 @@ xcodebuild test \
 
 `.github/workflows/ios-ci.yml`は、`main`へのpushとPull RequestでUnit Testを実行します。
 
-`.github/workflows/testflight.yml`は、手動実行または`v*`タグpushでRelease archiveを作り、App Store Connectへアップロードします。GitHub repositoryの`Settings > Secrets and variables > Actions`に次を登録してください。
-
-| Secret | 内容 |
-|---|---|
-| `ASC_KEY_ID` | App Store Connect APIキーのKey ID |
-| `ASC_ISSUER_ID` | App Store Connect APIキーのIssuer ID |
-| `ASC_API_KEY_BASE64` | `.p8`キーをbase64化した文字列 |
-| `APPLE_TEAM_ID` | Apple Developer ProgramのTeam ID |
-
-`.p8`キーのbase64化例:
-
-```sh
-base64 -i AuthKey_XXXXXXXXXX.p8 -o AuthKey_XXXXXXXXXX.p8.base64
-```
-
-GitHub Actionsでは`github.run_number`を`CURRENT_PROJECT_VERSION`に渡すため、App Store Connect上のbuild numberはCI実行ごとに単調増加します。
+TestFlightへのアップロードは、現時点ではGitHub Actionsでは自動化せず、Xcodeの`Archive`から手動で行います。CI上で安定して自動アップロードするには、Distribution証明書、Provisioning Profile、CI用keychainの管理が必要になり、初期テスト目的には運用コストが高いためです。
 
 ## Xcode署名設定
 
@@ -48,7 +33,7 @@ Apple Developer Program登録済みのApple AccountでXcodeへログインした
 2. Apple Accountを選択する。
 3. 対象Teamを選択し、`Manage Certificates...`を開く。
 4. `+`から`Apple Development`を作成する。
-5. ローカルMacからTestFlightへ直接アップロードする場合は、必要に応じて`Apple Distribution`も作成する。
+5. TestFlightへアップロードする場合は、必要に応じて`Apple Distribution`も作成する。
 
 ターミナルで次を実行し、署名IDが表示されればローカル署名の準備は完了です。
 
@@ -56,7 +41,20 @@ Apple Developer Program登録済みのApple AccountでXcodeへログインした
 security find-identity -v -p codesigning
 ```
 
-Xcodeで実機に直接インストールする場合は、対象iPhoneをUSB接続または同一ネットワークで認識させ、`Signing & Capabilities`でTeamを選びます。TestFlight配布だけなら、CIのApp Store Connect APIキーによる自動署名を使うため、ローカルMacにDistribution証明書が必須とは限りません。
+Xcodeで実機に直接インストールする場合は、対象iPhoneをUSB接続または同一ネットワークで認識させ、`Signing & Capabilities`でTeamを選びます。
+
+## TestFlightアップロード
+
+TestFlight用ビルドは、Xcodeから手動でアップロードします。
+
+1. Xcodeで `ChargeReminder.xcodeproj` を開く。
+2. Schemeに `ChargeReminder`、実行先に `Any iOS Device (arm64)` または接続中の実機を選ぶ。
+3. `Product > Archive` を実行する。
+4. Organizerで作成されたArchiveを選び、`Distribute App` を押す。
+5. `App Store Connect` への配布を選び、画面の指示に従ってアップロードする。
+6. App Store ConnectのTestFlightタブで、アップロードしたビルドが処理完了になるまで待つ。
+
+新しいビルドを再アップロードする場合は、XcodeのBuildを前回より大きい値に上げてからArchiveします。
 
 ## App Store Connect初期設定
 

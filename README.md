@@ -215,11 +215,11 @@ docs/
    - 充電状態表示
    - アプリ復帰時の状態更新
 
-テスト、GitHub Actions、TestFlight配布の具体的な手順は `docs/testing.md` にまとめています。
+テスト、GitHub Actions、TestFlight配布の具体的な手順は `docs/testing.md` にまとめています。GitHub ActionsはUnit Testのみ実行し、TestFlightアップロードはXcodeのArchiveから手動で行います。
 
 ## 現時点の注意
 
-シミュレータ向けのビルドとテストターゲットのコンパイルは確認済みです。
-実機インストール、TestFlight配布、通知を含む実機検証はまだ完了していません。
+シミュレータ向けのビルド、Unit Test、実機インストール、TestFlightへのアップロードは確認済みです。
+外部テスター配布は、初回Beta App Reviewの承認待ちです。通知を含む実機QAは承認後に友人のiPhoneでも確認します。
 
-次の開発マイルストーンは、機能追加ではなく、まずMac/Xcode上でビルドし、iPhone実機で通知とバッテリー取得が動くことを確認することです。
+次の開発マイルストーンは、初回Beta App Reviewの承認後に友人を外部テスターへ招待し、通知とバッテリー取得を含む実機QAを進めることです。
