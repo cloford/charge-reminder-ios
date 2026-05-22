@@ -25,8 +25,10 @@ jobs:
           ASC_API_KEY_BASE64: ${{ secrets.ASC_API_KEY_BASE64 }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
         run: |
+          set -euo pipefail
           mkdir -p "$RUNNER_TEMP/AuthKeys"
           printf '%s' "$ASC_API_KEY_BASE64" | base64 --decode > "$RUNNER_TEMP/AuthKeys/AuthKey_${ASC_KEY_ID}.p8"
+          chmod 600 "$RUNNER_TEMP/AuthKeys/AuthKey_${ASC_KEY_ID}.p8"
 
       - name: Archive
         env:
@@ -45,6 +47,8 @@ jobs:
             -authenticationKeyPath "$RUNNER_TEMP/AuthKeys/AuthKey_${ASC_KEY_ID}.p8" \
             -authenticationKeyID "$ASC_KEY_ID" \
             -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            CODE_SIGN_STYLE=Automatic \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER"
 
