@@ -4,6 +4,7 @@ import Foundation
 final class HomeViewModel: ObservableObject {
     @Published private(set) var batteryStatus = BatteryStatus(level: nil, state: .unknown)
     @Published private(set) var recommendation: ChargeRecommendation = .unknown
+    @Published private(set) var lastUpdatedAt: Date?
 
     private let batteryService: BatteryServiceProtocol
     private let nowProvider: () -> Date
@@ -19,8 +20,13 @@ final class HomeViewModel: ObservableObject {
         self.calendar = calendar
     }
 
-    func refresh(settingsStore: SettingsStore, scoreStore: ScoreStore) {
+    func refresh(
+        settingsStore: SettingsStore,
+        historyStore: HistoryStore,
+        source: ChargeCheckSource = .automatic
+    ) {
         batteryStatus = batteryService.currentStatus()
+        lastUpdatedAt = nowProvider()
         recommendation = BatteryJudgement.recommendation(
             status: batteryStatus,
             wakeUpSetting: settingsStore.wakeUpSetting,
@@ -28,16 +34,7 @@ final class HomeViewModel: ObservableObject {
             now: nowProvider(),
             calendar: calendar
         )
-
-        if batteryStatus.state == .charging || batteryStatus.state == .full {
-            scoreStore.markChargingWhenChecked()
-        }
-
-        if isAfterWakeUp(settingsStore.wakeUpSetting),
-           let level = batteryStatus.level,
-           level >= settingsStore.lowBatteryThreshold {
-            scoreStore.markEnoughBatteryInMorning()
-        }
+        historyStore.recordCheck(status: batteryStatus, source: source)
     }
 
     func nextNotification(from settings: [NotificationSetting]) -> NotificationSetting? {
@@ -47,10 +44,15 @@ final class HomeViewModel: ObservableObject {
         }
     }
 
-    private func isAfterWakeUp(_ wakeUpSetting: WakeUpSetting) -> Bool {
-        let nowComponents = calendar.dateComponents([.hour, .minute], from: nowProvider())
-        let nowMinutes = (nowComponents.hour ?? 0) * 60 + (nowComponents.minute ?? 0)
-        let wakeMinutes = wakeUpSetting.hour * 60 + wakeUpSetting.minute
-        return nowMinutes >= wakeMinutes
+    func formattedLastUpdatedAt() -> String {
+        guard let lastUpdatedAt else {
+            return "未更新"
+        }
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.locale = Locale(identifier: "ja_JP")
+        formatter.dateFormat = "H:mm"
+        return formatter.string(from: lastUpdatedAt)
     }
+
 }

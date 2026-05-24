@@ -33,61 +33,96 @@ final class StoreTests: XCTestCase {
         XCTAssertTrue(reloaded.hasCompletedOnboarding)
     }
 
-    func testScoreStoreMarksAreIdempotent() {
-        let store = ScoreStore(
+    func testHistoryStoreRecordsCheck() {
+        let checkedAt = Self.makeDate(year: 2026, month: 5, day: 24, hour: 12, minute: 0)
+        let store = HistoryStore(
             userDefaults: makeUserDefaults(),
-            dateProvider: { Self.makeDate(year: 2026, month: 5, day: 22, hour: 23, minute: 0) },
-            calendar: Self.calendar
+            dateProvider: { checkedAt }
         )
 
-        store.markOpenedAfterNotification()
-        store.markOpenedAfterNotification()
-        store.markChargingWhenChecked()
-        store.markChargingWhenChecked()
-        store.markEnoughBatteryInMorning()
-        store.markEnoughBatteryInMorning()
+        store.recordCheck(
+            status: BatteryStatus(level: 75, state: .charging),
+            source: .manual
+        )
 
-        XCTAssertEqual(store.todayScore.total, 3)
-        XCTAssertEqual(store.scores.count, 1)
+        XCTAssertEqual(store.records.count, 1)
+        XCTAssertEqual(store.latestRecord?.checkedAt, checkedAt)
+        XCTAssertEqual(store.latestRecord?.batteryLevel, 75)
+        XCTAssertEqual(store.latestRecord?.batteryState, .charging)
+        XCTAssertEqual(store.latestRecord?.source, .manual)
     }
 
-    func testScoreStoreSevenDayAverageUsesMissingDaysAsZero() {
+    func testHistoryStorePersistsWithinInjectedUserDefaultsOnly() {
         let userDefaults = makeUserDefaults()
-        let store = ScoreStore(
+        let store = HistoryStore(
             userDefaults: userDefaults,
-            dateProvider: { Self.makeDate(year: 2026, month: 5, day: 22, hour: 23, minute: 0) },
-            calendar: Self.calendar
+            dateProvider: { Self.makeDate(year: 2026, month: 5, day: 24, hour: 12, minute: 0) }
         )
 
-        store.markOpenedAfterNotification()
-        store.markChargingWhenChecked()
+        store.recordCheck(
+            status: BatteryStatus(level: 75, state: .charging),
+            source: .manual
+        )
 
-        XCTAssertEqual(store.sevenDayAverage, 2.0 / 7.0, accuracy: 0.001)
+        let reloaded = HistoryStore(userDefaults: userDefaults)
+        let isolated = HistoryStore(userDefaults: makeUserDefaults())
+
+        XCTAssertEqual(reloaded.records.count, 1)
+        XCTAssertEqual(isolated.records.count, 0)
     }
 
-    func testScoreStorePersistsWithinInjectedUserDefaultsOnly() {
-        let userDefaults = makeUserDefaults()
-        let store = ScoreStore(
-            userDefaults: userDefaults,
-            dateProvider: { Self.makeDate(year: 2026, month: 5, day: 22, hour: 23, minute: 0) },
-            calendar: Self.calendar
-        )
-
-        store.markOpenedAfterNotification()
-
-        let reloaded = ScoreStore(
-            userDefaults: userDefaults,
-            dateProvider: { Self.makeDate(year: 2026, month: 5, day: 22, hour: 23, minute: 0) },
-            calendar: Self.calendar
-        )
-        let isolated = ScoreStore(
+    func testHistoryStoreKeepsMostRecentRecordsFirst() {
+        var currentDate = Self.makeDate(year: 2026, month: 5, day: 24, hour: 12, minute: 0)
+        let store = HistoryStore(
             userDefaults: makeUserDefaults(),
-            dateProvider: { Self.makeDate(year: 2026, month: 5, day: 22, hour: 23, minute: 0) },
-            calendar: Self.calendar
+            dateProvider: { currentDate }
         )
 
-        XCTAssertEqual(reloaded.todayScore.total, 1)
-        XCTAssertEqual(isolated.todayScore.total, 0)
+        store.recordCheck(status: BatteryStatus(level: 70, state: .unplugged), source: .automatic)
+        currentDate = Self.makeDate(year: 2026, month: 5, day: 24, hour: 13, minute: 0)
+        store.recordCheck(status: BatteryStatus(level: 80, state: .charging), source: .manual)
+
+        XCTAssertEqual(store.recentRecords.first?.batteryLevel, 80)
+        XCTAssertEqual(store.latestRecord?.batteryLevel, 80)
+    }
+
+    func testHistoryStoreSkipsDuplicateAutomaticRecordsWithinFiveMinutes() {
+        var currentDate = Self.makeDate(year: 2026, month: 5, day: 24, hour: 12, minute: 0)
+        let store = HistoryStore(
+            userDefaults: makeUserDefaults(),
+            dateProvider: { currentDate }
+        )
+        let status = BatteryStatus(level: 80, state: .unplugged)
+
+        store.recordCheck(status: status, source: .automatic)
+        currentDate = Self.makeDate(year: 2026, month: 5, day: 24, hour: 12, minute: 1)
+        store.recordCheck(status: status, source: .automatic)
+
+        XCTAssertEqual(store.records.count, 1)
+    }
+
+    func testHistoryStoreKeepsManualRecordsEvenWhenStatusIsSame() {
+        var currentDate = Self.makeDate(year: 2026, month: 5, day: 24, hour: 12, minute: 0)
+        let store = HistoryStore(
+            userDefaults: makeUserDefaults(),
+            dateProvider: { currentDate }
+        )
+        let status = BatteryStatus(level: 80, state: .unplugged)
+
+        store.recordCheck(status: status, source: .manual)
+        currentDate = Self.makeDate(year: 2026, month: 5, day: 24, hour: 12, minute: 1)
+        store.recordCheck(status: status, source: .manual)
+
+        XCTAssertEqual(store.records.count, 2)
+    }
+
+    func testNotificationOpenTrackerConsumesPendingStateOnce() {
+        let userDefaults = makeUserDefaults()
+
+        NotificationOpenTracker.markPending(userDefaults: userDefaults)
+
+        XCTAssertTrue(NotificationOpenTracker.consumePending(userDefaults: userDefaults))
+        XCTAssertFalse(NotificationOpenTracker.consumePending(userDefaults: userDefaults))
     }
 
     private func makeUserDefaults() -> UserDefaults {
@@ -97,16 +132,10 @@ final class StoreTests: XCTestCase {
         return userDefaults
     }
 
-    private static var calendar: Calendar {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
-        return calendar
-    }
-
     private static func makeDate(year: Int, month: Int, day: Int, hour: Int, minute: Int) -> Date {
         DateComponents(
-            calendar: calendar,
-            timeZone: calendar.timeZone,
+            calendar: Calendar(identifier: .gregorian),
+            timeZone: TimeZone(secondsFromGMT: 0)!,
             year: year,
             month: month,
             day: day,
