@@ -20,7 +20,11 @@ final class HomeViewModel: ObservableObject {
         self.calendar = calendar
     }
 
-    func refresh(settingsStore: SettingsStore, scoreStore: ScoreStore) {
+    func refresh(
+        settingsStore: SettingsStore,
+        historyStore: HistoryStore,
+        source: ChargeCheckSource = .automatic
+    ) {
         batteryStatus = batteryService.currentStatus()
         lastUpdatedAt = nowProvider()
         recommendation = BatteryJudgement.recommendation(
@@ -30,16 +34,7 @@ final class HomeViewModel: ObservableObject {
             now: nowProvider(),
             calendar: calendar
         )
-
-        if batteryStatus.state == .charging || batteryStatus.state == .full {
-            scoreStore.markChargingWhenChecked()
-        }
-
-        if isAfterWakeUp(settingsStore.wakeUpSetting),
-           let level = batteryStatus.level,
-           level >= settingsStore.lowBatteryThreshold {
-            scoreStore.markEnoughBatteryInMorning()
-        }
+        historyStore.recordCheck(status: batteryStatus, source: source)
     }
 
     func nextNotification(from settings: [NotificationSetting]) -> NotificationSetting? {
@@ -60,10 +55,4 @@ final class HomeViewModel: ObservableObject {
         return formatter.string(from: lastUpdatedAt)
     }
 
-    private func isAfterWakeUp(_ wakeUpSetting: WakeUpSetting) -> Bool {
-        let nowComponents = calendar.dateComponents([.hour, .minute], from: nowProvider())
-        let nowMinutes = (nowComponents.hour ?? 0) * 60 + (nowComponents.minute ?? 0)
-        let wakeMinutes = wakeUpSetting.hour * 60 + wakeUpSetting.minute
-        return nowMinutes >= wakeMinutes
-    }
 }

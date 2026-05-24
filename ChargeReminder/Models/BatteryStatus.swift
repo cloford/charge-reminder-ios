@@ -5,7 +5,7 @@ struct BatteryStatus: Equatable {
     var state: BatteryConnectionState
 }
 
-enum BatteryConnectionState: String, Equatable {
+enum BatteryConnectionState: String, Codable, Equatable {
     case unplugged
     case charging
     case full

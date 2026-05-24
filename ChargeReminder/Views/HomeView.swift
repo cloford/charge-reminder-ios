@@ -2,7 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject private var settingsStore: SettingsStore
-    @EnvironmentObject private var scoreStore: ScoreStore
+    @EnvironmentObject private var historyStore: HistoryStore
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var viewModel = HomeViewModel()
 
@@ -26,32 +26,39 @@ struct HomeView: View {
                     LabeledContent("次回通知", value: nextNotificationText)
                 }
 
-                Section("今日の習慣メモ") {
-                    LabeledContent("達成", value: "\(scoreStore.todayScore.total) / 3")
-                    Text("競うものではなく、夜の充電確認ができたかを見る目安です。")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                Section("最終確認") {
+                    if let latestRecord = historyStore.latestRecord {
+                        LabeledContent("時刻", value: recordTimeText(latestRecord))
+                        LabeledContent("残量", value: latestRecord.batteryLevelText)
+                        LabeledContent("状態", value: latestRecord.batteryState.displayName)
+                    } else {
+                        Text("まだ確認履歴がありません。")
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
             .navigationTitle("充電確認")
             .toolbar {
                 Button {
-                    viewModel.refresh(settingsStore: settingsStore, scoreStore: scoreStore)
+                    viewModel.refresh(settingsStore: settingsStore, historyStore: historyStore, source: .manual)
                 } label: {
                     Image(systemName: "arrow.clockwise")
                 }
                 .accessibilityLabel("状態を更新")
             }
             .refreshable {
-                viewModel.refresh(settingsStore: settingsStore, scoreStore: scoreStore)
+                viewModel.refresh(settingsStore: settingsStore, historyStore: historyStore, source: .manual)
             }
             .onAppear {
-                viewModel.refresh(settingsStore: settingsStore, scoreStore: scoreStore)
+                refreshFromCurrentContext()
             }
             .onChange(of: scenePhase) { _, newPhase in
                 if newPhase == .active {
-                    viewModel.refresh(settingsStore: settingsStore, scoreStore: scoreStore)
+                    refreshFromCurrentContext()
                 }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .didOpenChargeReminderNotification)) { _ in
+                refreshFromCurrentContext()
             }
         }
     }
@@ -81,5 +88,17 @@ struct HomeView: View {
 
     private var nextNotificationText: String {
         viewModel.nextNotification(from: settingsStore.notificationSettings)?.displayTime ?? "なし"
+    }
+
+    private func refreshFromCurrentContext() {
+        let source: ChargeCheckSource = NotificationOpenTracker.consumePending() ? .notification : .automatic
+        viewModel.refresh(settingsStore: settingsStore, historyStore: historyStore, source: source)
+    }
+
+    private func recordTimeText(_ record: ChargeCheckRecord) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ja_JP")
+        formatter.dateFormat = "M/d H:mm"
+        return formatter.string(from: record.checkedAt)
     }
 }

@@ -1,8 +1,6 @@
 import SwiftUI
 
 struct RootTabView: View {
-    @EnvironmentObject private var scoreStore: ScoreStore
-
     var body: some View {
         TabView {
             HomeView()
@@ -15,9 +13,9 @@ struct RootTabView: View {
                     Label("予定", systemImage: "calendar.badge.clock")
                 }
 
-            ScoreView()
+            HistoryView()
                 .tabItem {
-                    Label("習慣", systemImage: "chart.bar")
+                    Label("履歴", systemImage: "clock.arrow.circlepath")
                 }
 
             AppSettingsView()
@@ -25,18 +23,5 @@ struct RootTabView: View {
                     Label("設定", systemImage: "gearshape")
                 }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .didOpenChargeReminderNotification)) { _ in
-            markOpenedAfterNotificationIfNeeded()
-        }
-        .onAppear {
-            markOpenedAfterNotificationIfNeeded()
-        }
-    }
-
-    private func markOpenedAfterNotificationIfNeeded() {
-        guard NotificationOpenTracker.consumePending() else {
-            return
-        }
-        scoreStore.markOpenedAfterNotification()
     }
 }

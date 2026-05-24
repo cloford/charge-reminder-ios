@@ -10,52 +10,52 @@ final class HomeViewModelTests: XCTestCase {
             calendar: Self.calendar
         )
         let settingsStore = SettingsStore(userDefaults: makeUserDefaults())
-        let scoreStore = ScoreStore(
+        let historyStore = HistoryStore(
             userDefaults: makeUserDefaults(),
-            dateProvider: { Self.makeDate(year: 2026, month: 5, day: 22, hour: 23, minute: 0) },
-            calendar: Self.calendar
+            dateProvider: { Self.makeDate(year: 2026, month: 5, day: 22, hour: 23, minute: 0) }
         )
 
-        viewModel.refresh(settingsStore: settingsStore, scoreStore: scoreStore)
+        viewModel.refresh(settingsStore: settingsStore, historyStore: historyStore)
 
         XCTAssertEqual(viewModel.batteryStatus, BatteryStatus(level: 49, state: .unplugged))
         XCTAssertEqual(viewModel.recommendation, .chargeRecommended)
+        XCTAssertEqual(historyStore.latestRecord?.batteryLevel, 49)
     }
 
-    func testRefreshMarksChargingWhenChecked() {
+    func testRefreshRecordsChargingState() {
         let viewModel = HomeViewModel(
             batteryService: FakeBatteryService(status: BatteryStatus(level: 70, state: .charging)),
             nowProvider: { Self.makeDate(year: 2026, month: 5, day: 22, hour: 23, minute: 0) },
             calendar: Self.calendar
         )
         let settingsStore = SettingsStore(userDefaults: makeUserDefaults())
-        let scoreStore = ScoreStore(
+        let historyStore = HistoryStore(
             userDefaults: makeUserDefaults(),
-            dateProvider: { Self.makeDate(year: 2026, month: 5, day: 22, hour: 23, minute: 0) },
-            calendar: Self.calendar
+            dateProvider: { Self.makeDate(year: 2026, month: 5, day: 22, hour: 23, minute: 0) }
         )
 
-        viewModel.refresh(settingsStore: settingsStore, scoreStore: scoreStore)
+        viewModel.refresh(settingsStore: settingsStore, historyStore: historyStore, source: .manual)
 
-        XCTAssertTrue(scoreStore.todayScore.wasChargingWhenChecked)
+        XCTAssertEqual(historyStore.latestRecord?.batteryState, .charging)
+        XCTAssertEqual(historyStore.latestRecord?.source, .manual)
     }
 
-    func testRefreshMarksEnoughBatteryAfterWakeUp() {
+    func testRefreshRecordsMorningBatteryState() {
         let viewModel = HomeViewModel(
             batteryService: FakeBatteryService(status: BatteryStatus(level: 80, state: .unplugged)),
             nowProvider: { Self.makeDate(year: 2026, month: 5, day: 22, hour: 7, minute: 30) },
             calendar: Self.calendar
         )
         let settingsStore = SettingsStore(userDefaults: makeUserDefaults())
-        let scoreStore = ScoreStore(
+        let historyStore = HistoryStore(
             userDefaults: makeUserDefaults(),
-            dateProvider: { Self.makeDate(year: 2026, month: 5, day: 22, hour: 7, minute: 30) },
-            calendar: Self.calendar
+            dateProvider: { Self.makeDate(year: 2026, month: 5, day: 22, hour: 7, minute: 30) }
         )
 
-        viewModel.refresh(settingsStore: settingsStore, scoreStore: scoreStore)
+        viewModel.refresh(settingsStore: settingsStore, historyStore: historyStore)
 
-        XCTAssertTrue(scoreStore.todayScore.hadEnoughBatteryInMorning)
+        XCTAssertEqual(historyStore.latestRecord?.batteryLevel, 80)
+        XCTAssertEqual(historyStore.latestRecord?.batteryState, .unplugged)
     }
 
     func testNextNotificationChoosesSoonestEnabledTimeRelativeToNow() {
