@@ -16,6 +16,17 @@ struct NotificationSettingsView: View {
                     }
                 }
 
+                Section("起床予定") {
+                    DatePicker(
+                        "起床時刻",
+                        selection: wakeUpBinding,
+                        displayedComponents: .hourAndMinute
+                    )
+                    Text("起床時刻は、朝まで持ちそうかを判断するために使います。")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
                 Section("通知時刻") {
                     ForEach(settingsStore.notificationSettings) { setting in
                         NotificationSettingRow(setting: setting) { updated in
@@ -46,18 +57,33 @@ struct NotificationSettingsView: View {
                 }
 
                 Section {
-                    Text("通知はiOSの通知設定や集中モードの影響を受けます。このアプリは目覚ましアラームの代替ではありません。")
+                    Text("通知は充電状態を確認するためのリマインダーです。iOSの通知設定や集中モードの影響を受けます。")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle("通知")
+            .navigationTitle("予定")
             .task {
                 await viewModel.reschedule(
                     settings: settingsStore.notificationSettings,
                     notificationService: notificationService
                 )
             }
+        }
+    }
+
+    private var wakeUpBinding: Binding<Date> {
+        Binding {
+            DateTimeHelper.date(
+                from: settingsStore.wakeUpSetting.hour,
+                minute: settingsStore.wakeUpSetting.minute
+            )
+        } set: { newDate in
+            let components = Calendar.current.dateComponents([.hour, .minute], from: newDate)
+            settingsStore.wakeUpSetting = WakeUpSetting(
+                hour: components.hour ?? settingsStore.wakeUpSetting.hour,
+                minute: components.minute ?? settingsStore.wakeUpSetting.minute
+            )
         }
     }
 }

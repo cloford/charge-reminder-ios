@@ -5,13 +5,13 @@ final class ScoreViewModel: ObservableObject {
     func scoreComment(for score: ChargeScore) -> String {
         switch score.total {
         case 3:
-            return "良い充電習慣です。"
+            return "夜の充電確認が安定しています。"
         case 2:
-            return "かなり良いです。あと少し安定させましょう。"
+            return "良い流れです。翌朝の確認までできるとさらに安定します。"
         case 1:
-            return "寝る前の確認を少し増やしましょう。"
+            return "まずは夜の通知後に確認する習慣を作りましょう。"
         default:
-            return "まずは通知後に確認するところから始めましょう。"
+            return "夜の充電確認から始めましょう。"
         }
     }
 }

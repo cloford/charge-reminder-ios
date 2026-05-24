@@ -55,7 +55,7 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
 
     func scheduleDailyNotification(setting: NotificationSetting) async {
         let content = UNMutableNotificationContent()
-        content.title = "充電チェック"
+        content.title = "充電確認"
         content.body = message(for: setting)
         content.sound = .default
 
@@ -88,11 +88,11 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
     private func message(for setting: NotificationSetting) -> String {
         switch setting.id {
         case "charge_reminder_1":
-            return "そろそろ寝る前の充電を確認しよう。"
+            return "iPhoneの充電状態を確認しましょう。"
         case "charge_reminder_2":
-            return "明日の朝、電池は足りそう？"
+            return "次の予定まで電池は足りそうですか？"
         default:
-            return "今のうちに充電しておくと安心です。"
+            return "必要なら今のうちに充電しておくと安心です。"
         }
     }
 
@@ -107,10 +107,29 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) async {
-        NotificationCenter.default.post(name: .didOpenChargeReminderNotification, object: nil)
+        NotificationOpenTracker.markPending()
+        await MainActor.run {
+            NotificationCenter.default.post(name: .didOpenChargeReminderNotification, object: nil)
+        }
     }
 }
 
 extension Notification.Name {
     static let didOpenChargeReminderNotification = Notification.Name("didOpenChargeReminderNotification")
+}
+
+enum NotificationOpenTracker {
+    private static let pendingKey = "pendingNotificationOpen"
+
+    static func markPending(userDefaults: UserDefaults = .standard) {
+        userDefaults.set(true, forKey: pendingKey)
+    }
+
+    static func consumePending(userDefaults: UserDefaults = .standard) -> Bool {
+        let isPending = userDefaults.bool(forKey: pendingKey)
+        if isPending {
+            userDefaults.set(false, forKey: pendingKey)
+        }
+        return isPending
+    }
 }

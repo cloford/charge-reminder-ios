@@ -38,10 +38,16 @@ final class ScoreStore: ObservableObject {
     }
 
     func markOpenedAfterNotification() {
+        guard isChargingCheckWindow(dateProvider()) else {
+            return
+        }
         updateToday { $0.openedAfterNotification = true }
     }
 
     func markChargingWhenChecked() {
+        guard isChargingCheckWindow(dateProvider()) else {
+            return
+        }
         updateToday { $0.wasChargingWhenChecked = true }
     }
 
@@ -66,6 +72,11 @@ final class ScoreStore: ObservableObject {
         } else {
             scores.append(score)
         }
+    }
+
+    private func isChargingCheckWindow(_ date: Date) -> Bool {
+        let hour = calendar.component(.hour, from: date)
+        return hour >= 18 || hour <= 3
     }
 
     private func saveScores() {

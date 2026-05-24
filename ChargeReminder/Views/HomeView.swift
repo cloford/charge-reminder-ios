@@ -10,18 +10,15 @@ struct HomeView: View {
         NavigationStack {
             List {
                 Section {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(viewModel.recommendation.title)
-                            .font(.title2.bold())
-                        Text(viewModel.recommendation.message)
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.vertical, 6)
+                    statusHeader
                 }
 
                 Section("バッテリー") {
                     LabeledContent("残量", value: batteryLevelText)
                     LabeledContent("状態", value: viewModel.batteryStatus.state.displayName)
+                    Text("残量はiOSが返す目安です。端末によって5%刻みのように見える場合があります。")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
 
                 Section("予定") {
@@ -29,17 +26,25 @@ struct HomeView: View {
                     LabeledContent("次回通知", value: nextNotificationText)
                 }
 
-                Section("今日のスコア") {
-                    LabeledContent("スコア", value: "\(scoreStore.todayScore.total) / 3")
+                Section("今日の習慣メモ") {
+                    LabeledContent("達成", value: "\(scoreStore.todayScore.total) / 3")
+                    Text("競うものではなく、夜の充電確認ができたかを見る目安です。")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
-
+            }
+            .navigationTitle("充電確認")
+            .toolbar {
                 Button {
                     viewModel.refresh(settingsStore: settingsStore, scoreStore: scoreStore)
                 } label: {
-                    Label("状態を更新", systemImage: "arrow.clockwise")
+                    Image(systemName: "arrow.clockwise")
                 }
+                .accessibilityLabel("状態を更新")
             }
-            .navigationTitle("充電チェック")
+            .refreshable {
+                viewModel.refresh(settingsStore: settingsStore, scoreStore: scoreStore)
+            }
             .onAppear {
                 viewModel.refresh(settingsStore: settingsStore, scoreStore: scoreStore)
             }
@@ -51,11 +56,27 @@ struct HomeView: View {
         }
     }
 
+    private var statusHeader: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(viewModel.recommendation.title)
+                    .font(.title2.bold())
+                Spacer()
+                Text("更新 \(viewModel.formattedLastUpdatedAt())")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Text(viewModel.recommendation.message)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 6)
+    }
+
     private var batteryLevelText: String {
         guard let level = viewModel.batteryStatus.level else {
             return "不明"
         }
-        return "\(level)%"
+        return "約\(level)%"
     }
 
     private var nextNotificationText: String {

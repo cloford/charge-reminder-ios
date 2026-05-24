@@ -15,12 +15,18 @@ struct ScoreView: View {
                 }
 
                 Section("内訳") {
-                    ScoreCheckRow(title: "通知後にアプリを開いた", isDone: scoreStore.todayScore.openedAfterNotification)
-                    ScoreCheckRow(title: "確認時に充電中だった", isDone: scoreStore.todayScore.wasChargingWhenChecked)
+                    ScoreCheckRow(title: "夜の通知後に確認した", isDone: scoreStore.todayScore.openedAfterNotification)
+                    ScoreCheckRow(title: "夜の確認時に充電中だった", isDone: scoreStore.todayScore.wasChargingWhenChecked)
                     ScoreCheckRow(title: "翌朝バッテリーが十分だった", isDone: scoreStore.todayScore.hadEnoughBatteryInMorning)
                 }
+
+                Section {
+                    Text("18:00〜3:59の確認を対象にします。昼間のテスト通知で稼ぐためのものではなく、夜の充電習慣を見るための目安です。")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
             }
-            .navigationTitle("スコア")
+            .navigationTitle("習慣メモ")
         }
     }
 }

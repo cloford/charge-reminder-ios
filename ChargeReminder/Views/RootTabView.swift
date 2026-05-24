@@ -12,12 +12,12 @@ struct RootTabView: View {
 
             NotificationSettingsView()
                 .tabItem {
-                    Label("通知", systemImage: "bell")
+                    Label("予定", systemImage: "calendar.badge.clock")
                 }
 
             ScoreView()
                 .tabItem {
-                    Label("スコア", systemImage: "chart.bar")
+                    Label("習慣", systemImage: "chart.bar")
                 }
 
             AppSettingsView()
@@ -26,7 +26,17 @@ struct RootTabView: View {
                 }
         }
         .onReceive(NotificationCenter.default.publisher(for: .didOpenChargeReminderNotification)) { _ in
-            scoreStore.markOpenedAfterNotification()
+            markOpenedAfterNotificationIfNeeded()
         }
+        .onAppear {
+            markOpenedAfterNotificationIfNeeded()
+        }
+    }
+
+    private func markOpenedAfterNotificationIfNeeded() {
+        guard NotificationOpenTracker.consumePending() else {
+            return
+        }
+        scoreStore.markOpenedAfterNotification()
     }
 }

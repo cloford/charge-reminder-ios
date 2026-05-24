@@ -4,6 +4,7 @@ import Foundation
 final class HomeViewModel: ObservableObject {
     @Published private(set) var batteryStatus = BatteryStatus(level: nil, state: .unknown)
     @Published private(set) var recommendation: ChargeRecommendation = .unknown
+    @Published private(set) var lastUpdatedAt: Date?
 
     private let batteryService: BatteryServiceProtocol
     private let nowProvider: () -> Date
@@ -21,6 +22,7 @@ final class HomeViewModel: ObservableObject {
 
     func refresh(settingsStore: SettingsStore, scoreStore: ScoreStore) {
         batteryStatus = batteryService.currentStatus()
+        lastUpdatedAt = nowProvider()
         recommendation = BatteryJudgement.recommendation(
             status: batteryStatus,
             wakeUpSetting: settingsStore.wakeUpSetting,
@@ -45,6 +47,17 @@ final class HomeViewModel: ObservableObject {
         return enabled.min { lhs, rhs in
             DateTimeHelper.date(from: lhs.hour, minute: lhs.minute, relativeTo: nowProvider(), calendar: calendar) < DateTimeHelper.date(from: rhs.hour, minute: rhs.minute, relativeTo: nowProvider(), calendar: calendar)
         }
+    }
+
+    func formattedLastUpdatedAt() -> String {
+        guard let lastUpdatedAt else {
+            return "未更新"
+        }
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.locale = Locale(identifier: "ja_JP")
+        formatter.dateFormat = "H:mm"
+        return formatter.string(from: lastUpdatedAt)
     }
 
     private func isAfterWakeUp(_ wakeUpSetting: WakeUpSetting) -> Bool {

@@ -8,21 +8,16 @@ struct AppSettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("起床時刻") {
-                    DatePicker(
-                        "起床予定",
-                        selection: wakeUpBinding,
-                        displayedComponents: .hourAndMinute
-                    )
-                }
-
                 Section("バッテリー") {
                     Stepper(
-                        "しきい値 \(settingsStore.lowBatteryThreshold)%",
+                        "充電推奨ライン \(settingsStore.lowBatteryThreshold)%",
                         value: $settingsStore.lowBatteryThreshold,
                         in: 10...90,
                         step: 5
                     )
+                    Text("この残量を下回ると、ホーム画面で充電をおすすめします。")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
 
                 Section("通知") {
@@ -46,21 +41,6 @@ struct AppSettingsView: View {
             .task {
                 await viewModel.refreshAuthorizationStatus(notificationService: notificationService)
             }
-        }
-    }
-
-    private var wakeUpBinding: Binding<Date> {
-        Binding {
-            DateTimeHelper.date(
-                from: settingsStore.wakeUpSetting.hour,
-                minute: settingsStore.wakeUpSetting.minute
-            )
-        } set: { newDate in
-            let components = Calendar.current.dateComponents([.hour, .minute], from: newDate)
-            settingsStore.wakeUpSetting = WakeUpSetting(
-                hour: components.hour ?? settingsStore.wakeUpSetting.hour,
-                minute: components.minute ?? settingsStore.wakeUpSetting.minute
-            )
         }
     }
 }

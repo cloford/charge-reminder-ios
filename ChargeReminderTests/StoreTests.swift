@@ -90,6 +90,30 @@ final class StoreTests: XCTestCase {
         XCTAssertEqual(isolated.todayScore.total, 0)
     }
 
+    func testScoreStoreDoesNotCountDaytimeNotificationChecks() {
+        let store = ScoreStore(
+            userDefaults: makeUserDefaults(),
+            dateProvider: { Self.makeDate(year: 2026, month: 5, day: 22, hour: 12, minute: 0) },
+            calendar: Self.calendar
+        )
+
+        store.markOpenedAfterNotification()
+        store.markChargingWhenChecked()
+
+        XCTAssertFalse(store.todayScore.openedAfterNotification)
+        XCTAssertFalse(store.todayScore.wasChargingWhenChecked)
+        XCTAssertEqual(store.todayScore.total, 0)
+    }
+
+    func testNotificationOpenTrackerConsumesPendingStateOnce() {
+        let userDefaults = makeUserDefaults()
+
+        NotificationOpenTracker.markPending(userDefaults: userDefaults)
+
+        XCTAssertTrue(NotificationOpenTracker.consumePending(userDefaults: userDefaults))
+        XCTAssertFalse(NotificationOpenTracker.consumePending(userDefaults: userDefaults))
+    }
+
     private func makeUserDefaults() -> UserDefaults {
         let suiteName = "ChargeReminderTests.\(UUID().uuidString)"
         let userDefaults = UserDefaults(suiteName: suiteName)!

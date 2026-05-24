@@ -22,11 +22,11 @@ enum ChargeRecommendation: Equatable {
     var message: String {
         switch self {
         case .safe:
-            return "今のところ余裕があります。"
+            return "次の予定まで大きな心配はなさそうです。"
         case .caution:
-            return "寝る前に充電を確認しておくと安心です。"
+            return "残量に少し余裕がありません。外出前や休む前に充電を確認しましょう。"
         case .chargeRecommended:
-            return "朝まで不安があります。今のうちに充電しましょう。"
+            return "このままだと不足する可能性があります。今のうちに充電しておくと安心です。"
         case .unknown:
             return "バッテリー状態を取得できませんでした。"
         }
