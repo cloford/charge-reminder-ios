@@ -3,28 +3,23 @@ import SwiftUI
 struct NotificationSettingsView: View {
     @EnvironmentObject private var settingsStore: SettingsStore
     @EnvironmentObject private var notificationService: NotificationService
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var viewModel = NotificationSettingsViewModel()
-    @State private var authorizationMessage: String?
+    @State private var isShowingInformation = false
 
     var body: some View {
         NavigationStack {
             List {
-                if let authorizationMessage {
-                    Section {
-                        Text(authorizationMessage)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
                 Section("起床予定") {
                     DatePicker(
-                        "起床時刻",
+                        "",
                         selection: wakeUpBinding,
                         displayedComponents: .hourAndMinute
                     )
-                    Text("起床時刻は、朝まで持ちそうかを判断するために使います。")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                    .labelsHidden()
+                    .datePickerStyle(.wheel)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityLabel("起床予定")
                 }
 
                 Section("通知時刻") {
@@ -41,33 +36,58 @@ struct NotificationSettingsView: View {
                     }
                 }
 
-                Section {
-                    Button {
-                        Task {
-                            let granted = await viewModel.requestAuthorization(notificationService: notificationService)
-                            authorizationMessage = granted ? "通知が許可されました。" : "通知が許可されていません。"
-                            await viewModel.reschedule(
-                                settings: settingsStore.notificationSettings,
-                                notificationService: notificationService
-                            )
+                if viewModel.authorizationStatus == .notDetermined {
+                    Section {
+                        Button {
+                            Task {
+                                _ = await viewModel.requestAuthorization(notificationService: notificationService)
+                                await viewModel.reschedule(
+                                    settings: settingsStore.notificationSettings,
+                                    notificationService: notificationService
+                                )
+                            }
+                        } label: {
+                            Label("通知を許可", systemImage: "bell.badge")
                         }
-                    } label: {
-                        Label("通知を許可して予約を更新", systemImage: "bell.badge")
                     }
-                }
-
-                Section {
-                    Text("通知は充電状態を確認するためのリマインダーです。iOSの通知設定や集中モードの影響を受けます。")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                } else if viewModel.authorizationStatus == .denied {
+                    Section {
+                        Button {
+                            notificationService.openSystemNotificationSettings()
+                        } label: {
+                            Label("iOS設定で通知を許可", systemImage: "gear")
+                        }
+                    } footer: {
+                        Text("通知が拒否されているため、設定した時刻に通知されません。")
+                    }
                 }
             }
             .navigationTitle("予定")
+            .toolbar {
+                Button {
+                    isShowingInformation = true
+                } label: {
+                    Image(systemName: "info.circle")
+                }
+                .accessibilityLabel("予定について")
+            }
+            .sheet(isPresented: $isShowingInformation) {
+                ScheduleInformationView()
+            }
             .task {
+                await viewModel.refreshAuthorizationStatus(notificationService: notificationService)
                 await viewModel.reschedule(
                     settings: settingsStore.notificationSettings,
                     notificationService: notificationService
                 )
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                guard newPhase == .active else {
+                    return
+                }
+                Task {
+                    await viewModel.refreshAuthorizationStatus(notificationService: notificationService)
+                }
             }
         }
     }
@@ -101,20 +121,9 @@ private struct NotificationSettingRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Toggle(isOn: Binding(
-                get: { setting.isEnabled },
-                set: { isEnabled in
-                    var updated = setting
-                    updated.isEnabled = isEnabled
-                    onChange(updated)
-                }
-            )) {
-                Text(setting.displayTime)
-            }
-
+        HStack {
             DatePicker(
-                "時刻",
+                "",
                 selection: Binding(
                     get: { selectedDate },
                     set: { newDate in
@@ -128,9 +137,49 @@ private struct NotificationSettingRow: View {
                 ),
                 displayedComponents: .hourAndMinute
             )
+            .labelsHidden()
+            .accessibilityLabel("通知時刻")
+
+            Spacer()
+
+            Toggle("", isOn: Binding(
+                get: { setting.isEnabled },
+                set: { isEnabled in
+                    var updated = setting
+                    updated.isEnabled = isEnabled
+                    onChange(updated)
+                }
+            ))
+            .labelsHidden()
+            .accessibilityLabel("\(setting.displayTime)の通知")
         }
         .onChange(of: setting) { _, newSetting in
             selectedDate = DateTimeHelper.date(from: newSetting.hour, minute: newSetting.minute)
+        }
+    }
+}
+
+private struct ScheduleInformationView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("起床予定") {
+                    Text("次の予定までバッテリーが持ちそうかを判断するために使います。")
+                }
+
+                Section("通知") {
+                    Text("設定した時刻に、充電状態の確認を促すリマインダーを表示します。")
+                    Text("通知はiOSの通知設定や集中モードの影響を受けます。")
+                }
+            }
+            .navigationTitle("予定について")
+            .toolbar {
+                Button("閉じる") {
+                    dismiss()
+                }
+            }
         }
     }
 }

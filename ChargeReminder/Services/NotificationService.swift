@@ -2,7 +2,7 @@ import Foundation
 import UserNotifications
 import UIKit
 
-enum ReminderAuthorizationStatus: String {
+enum ReminderAuthorizationStatus: String, Equatable {
     case notDetermined = "未確認"
     case denied = "拒否"
     case authorized = "許可済み"

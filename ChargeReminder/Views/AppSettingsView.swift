@@ -34,7 +34,6 @@ struct AppSettingsView: View {
                     Text("通知はiOSの通知設定に依存します。バックグラウンドで常時バッテリー監視はしません。")
                     Text("バッテリー状態はアプリ起動時・復帰時に確認します。")
                 }
-                .font(.footnote)
                 .foregroundStyle(.secondary)
             }
             .navigationTitle("設定")

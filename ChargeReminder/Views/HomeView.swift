@@ -13,26 +13,18 @@ struct HomeView: View {
                     statusHeader
                 }
 
-                Section("バッテリー") {
-                    LabeledContent("残量", value: batteryLevelText)
-                    LabeledContent("状態", value: viewModel.batteryStatus.state.displayName)
-                    Text("残量はiOSが返す目安です。端末によって5%刻みのように見える場合があります。")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
+                Section {
+                    HStack(spacing: 12) {
+                        Image(systemName: batteryStateIcon)
+                            .foregroundStyle(recommendationColor)
+                            .frame(width: 24)
 
-                Section("予定") {
-                    LabeledContent("起床予定", value: settingsStore.wakeUpSetting.displayTime)
-                    LabeledContent("次回通知", value: nextNotificationText)
-                }
+                        Text(viewModel.batteryStatus.state.displayName)
+                            .font(.headline)
 
-                Section("最終確認") {
-                    if let latestRecord = historyStore.latestRecord {
-                        LabeledContent("時刻", value: recordTimeText(latestRecord))
-                        LabeledContent("残量", value: latestRecord.batteryLevelText)
-                        LabeledContent("状態", value: latestRecord.batteryState.displayName)
-                    } else {
-                        Text("まだ確認履歴がありません。")
+                        Spacer()
+
+                        Text(batteryLevelText)
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -64,19 +56,25 @@ struct HomeView: View {
     }
 
     private var statusHeader: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(viewModel.recommendation.title)
-                    .font(.title2.bold())
-                Spacer()
-                Text("更新 \(viewModel.formattedLastUpdatedAt())")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+        VStack(spacing: 14) {
+            Image(systemName: recommendationIcon)
+                .font(.system(size: 44))
+                .foregroundStyle(recommendationColor)
+
+            Text(viewModel.recommendation.title)
+                .font(.largeTitle.bold())
+
             Text(viewModel.recommendation.message)
+                .font(.title3)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+
+            Text("更新 \(viewModel.formattedLastUpdatedAt())")
+                .font(.caption)
                 .foregroundStyle(.secondary)
         }
-        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
     }
 
     private var batteryLevelText: String {
@@ -86,19 +84,47 @@ struct HomeView: View {
         return "約\(level)%"
     }
 
-    private var nextNotificationText: String {
-        viewModel.nextNotification(from: settingsStore.notificationSettings)?.displayTime ?? "なし"
+    private var recommendationIcon: String {
+        switch viewModel.recommendation {
+        case .safe:
+            return "checkmark.circle.fill"
+        case .caution:
+            return "exclamationmark.triangle.fill"
+        case .chargeRecommended:
+            return "bolt.circle.fill"
+        case .unknown:
+            return "questionmark.circle"
+        }
+    }
+
+    private var recommendationColor: Color {
+        switch viewModel.recommendation {
+        case .safe:
+            return .green
+        case .caution:
+            return .orange
+        case .chargeRecommended:
+            return .red
+        case .unknown:
+            return .secondary
+        }
+    }
+
+    private var batteryStateIcon: String {
+        switch viewModel.batteryStatus.state {
+        case .unplugged:
+            return "powerplug"
+        case .charging:
+            return "bolt.fill"
+        case .full:
+            return "battery.100percent"
+        case .unknown:
+            return "questionmark.circle"
+        }
     }
 
     private func refreshFromCurrentContext() {
         let source: ChargeCheckSource = NotificationOpenTracker.consumePending() ? .notification : .automatic
         viewModel.refresh(settingsStore: settingsStore, historyStore: historyStore, source: source)
-    }
-
-    private func recordTimeText(_ record: ChargeCheckRecord) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ja_JP")
-        formatter.dateFormat = "M/d H:mm"
-        return formatter.string(from: record.checkedAt)
     }
 }
