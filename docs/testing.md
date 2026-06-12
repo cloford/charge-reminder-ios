@@ -7,14 +7,7 @@
 MacとXcodeがある環境では、次のコマンドでビルドとUnit Testを確認します。
 
 ```sh
-DEVICE_ID="$(xcrun simctl list devices available | awk -F'[()]' '/^-- iOS / { ios = 1; next } /^--/ { ios = 0 } ios && /\([0-9A-F-]{36}\)/ { print $2; exit }')"
-
-xcodebuild test \
-  -project ChargeReminder.xcodeproj \
-  -scheme ChargeReminder \
-  -destination "platform=iOS Simulator,id=${DEVICE_ID}" \
-  -derivedDataPath /tmp/charge-reminder-dd \
-  CODE_SIGNING_ALLOWED=NO
+scripts/test-ios.sh
 ```
 
 シミュレータが見つからない場合は、`xcodebuild -downloadPlatform iOS` でiOS Simulatorランタイムを追加してから再実行します。
@@ -23,7 +16,7 @@ xcodebuild test \
 
 `.github/workflows/ios-ci.yml` は、`main` へのpushとPull RequestでUnit Testを実行します。
 
-TestFlightへのアップロードは、現時点ではGitHub Actionsでは自動化せず、Xcodeの `Archive` から手動で行います。CI上で安定して自動アップロードするには、Distribution証明書、Provisioning Profile、CI用keychainの管理が必要になり、初期テスト目的には運用コストが高いためです。
+TestFlightへのアップロードは、現時点ではGitHub Actionsでは自動化せず、開発用Mac上で明示的に実行します。CI上で安定して自動アップロードするには、Distribution証明書、Provisioning Profile、CI用keychainの管理が必要になり、初期テスト目的には運用コストが高いためです。
 
 ## Xcode署名設定
 
@@ -45,7 +38,39 @@ Xcodeで実機に直接インストールする場合は、対象iPhoneをUSB接
 
 ## TestFlightアップロード
 
-TestFlight用ビルドは、Xcodeから手動でアップロードします。
+TestFlight用ビルドは、ローカルMacのCLIからアップロードします。通常は次のコマンドだけで、Build番号のインクリメント、Unit Test、Archive、App Store Connectへのアップロードまで実行します。
+
+```sh
+scripts/upload-testflight.sh
+```
+
+明示的なBuild番号を指定したい場合:
+
+```sh
+scripts/upload-testflight.sh --build-number 4
+```
+
+Archiveだけ作って、Xcode OrganizerやApp Store Connect上で確認したい場合:
+
+```sh
+scripts/upload-testflight.sh --archive-only
+```
+
+すでにテスト済みでUnit Testを省略したい場合:
+
+```sh
+scripts/upload-testflight.sh --skip-tests
+```
+
+Build番号だけを上げたい場合:
+
+```sh
+scripts/set-build-number.sh --next
+```
+
+スクリプトは `ChargeReminder.xcodeproj` の `CURRENT_PROJECT_VERSION` を更新します。TestFlightへアップロードしたら、Build番号更新もコミットしておくと次回の番号管理が崩れにくくなります。
+
+Xcode GUIでアップロードする場合は、次の手順でも同じです。
 
 1. Xcodeで `ChargeReminder.xcodeproj` を開く。
 2. Schemeに `ChargeReminder`、実行先に `Any iOS Device (arm64)` または接続中の実機を選ぶ。
@@ -54,7 +79,7 @@ TestFlight用ビルドは、Xcodeから手動でアップロードします。
 5. `App Store Connect` への配布を選び、画面の指示に従ってアップロードする。
 6. App Store ConnectのTestFlightタブで、アップロードしたビルドが処理完了になるまで待つ。
 
-新しいビルドを再アップロードする場合は、XcodeのBuildを前回より大きい値に上げてからArchiveします。
+新しいビルドを再アップロードする場合は、Build番号を前回より大きい値に上げてからArchiveします。
 
 ## App Store Connect初期設定
 

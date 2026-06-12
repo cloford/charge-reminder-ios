@@ -217,7 +217,7 @@ docs/
    - 充電状態表示
    - アプリ復帰時の状態更新
 
-テスト、GitHub Actions、TestFlight配布の具体的な手順は `docs/testing.md` にまとめています。GitHub ActionsはUnit Testのみ実行し、TestFlightアップロードはXcodeのArchiveから手動で行います。
+テスト、GitHub Actions、TestFlight配布の具体的な手順は `docs/testing.md` にまとめています。GitHub ActionsはUnit Testのみ実行し、TestFlightアップロードは開発用Mac上で `scripts/upload-testflight.sh` から明示的に行います。
 
 ## 現時点の注意
 
