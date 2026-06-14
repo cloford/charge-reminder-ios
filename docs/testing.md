@@ -1,6 +1,6 @@
 # テストとTestFlight配布手順
 
-このリポジトリは、Unit Testでロジックを確認し、XcodeからTestFlightへアップロードして自分と友人のiPhoneで実機QAする前提です。
+このリポジトリは、Unit Testでロジックを確認し、開発用MacのCLIからTestFlightへアップロードして、自分と友人のiPhoneで実機QAする前提です。
 
 ## ローカル確認
 
@@ -36,9 +36,9 @@ security find-identity -v -p codesigning
 
 Xcodeで実機に直接インストールする場合は、対象iPhoneをUSB接続または同一ネットワークで認識させ、`Signing & Capabilities` でTeamを選びます。
 
-## TestFlightアップロード
+## TestFlight内部配信
 
-TestFlight用ビルドは、ローカルMacのCLIからアップロードします。通常は次のコマンドだけで、Build番号のインクリメント、Unit Test、Archive、App Store Connectへのアップロードまで実行します。
+TestFlight用ビルドは、ローカルMacのCLIからアップロードします。内部テスターグループ `Kusodomo` はXcodeビルドの自動配信を有効にしているため、通常は次のコマンドだけで、Build番号のインクリメント、Unit Test、Archive、App Store Connectへのアップロード、内部テスター向け配信まで進みます。
 
 ```sh
 scripts/upload-testflight.sh
@@ -57,6 +57,8 @@ scripts/upload-testflight.sh
 `.p8`ファイルはリポジトリにコミットしません。
 
 CLIアップロードでは、ローカルKeychainに `Apple Distribution` 証明書があり、`APP_STORE_PROFILE_NAME` と同名のApp Store用 provisioning profile がインストールされている必要があります。標準のprofile名は `ChargeReminder App Store` です。
+
+アップロード後はApp Store Connect側のビルド処理に数分から数十分かかる場合があります。暗号化/輸出コンプライアンス確認が新たに出た場合だけ、App Store Connect上で回答します。
 
 明示的なBuild番号を指定したい場合:
 
@@ -90,6 +92,19 @@ scripts/set-build-number.sh --next
 
 スクリプトは `ChargeReminder.xcodeproj` の `CURRENT_PROJECT_VERSION` を更新します。TestFlightへアップロードしたら、Build番号更新もコミットしておくと次回の番号管理が崩れにくくなります。
 
+通常のmain取り込みから内部テスト配信までの流れ:
+
+```sh
+git pull --ff-only origin main
+scripts/upload-testflight.sh
+git status --short
+git add ChargeReminder.xcodeproj/project.pbxproj
+git commit -m "Bump build number for TestFlight"
+git push origin main
+```
+
+`scripts/upload-testflight.sh` はBuild番号を更新するため、アップロード成功後に `ChargeReminder.xcodeproj/project.pbxproj` の差分をコミットします。スクリプトや設定を変えた場合は、その差分も一緒にコミットします。
+
 Xcode GUIでアップロードする場合は、次の手順でも同じです。
 
 1. Xcodeで `ChargeReminder.xcodeproj` を開く。
@@ -107,13 +122,13 @@ Xcode GUIでアップロードする場合は、次の手順でも同じです�
 2. Bundle ID `com.cloford.chargereminder` を使ってiOSアプリレコードを作る。
 3. App情報、カテゴリ、連絡先、輸出コンプライアンスの必要項目を入力する。
 4. TestFlightタブでテスト情報を入力する。
-5. 外部テスター用グループを作る。
-6. 初回ビルドをグループへ追加し、Beta App Reviewに進める。
-7. 承認後、自分と友人のApple IDメールアドレスを外部テスターに追加するか、公開リンクを共有する。
+5. `ユーザーとアクセス` で友人をApp Store Connectユーザーとして招待する。
+6. 友人の権限は対象アプリのみに限定し、Certificates/Identifiers/Profiles権限は付けない。
+7. TestFlightタブで内部テスターグループ `Kusodomo` を作る。
+8. `Kusodomo` でXcodeビルドの自動配信を有効にする。
+9. 自分と友人を `Kusodomo` の内部テスターに追加する。
 
-外部テスター向けの初回ビルドはBeta App Reviewが必要です。承認後はTestFlightアプリからインストールできます。
-
-TODO: 友人をApp Store Connectの内部テスターにするか検討する。内部テスターは審査待ちを避けやすい一方で、App Store Connect上の権限付与が必要です。
+内部テスターは最大100人です。App Store Connectユーザーとしての権限付与が必要ですが、外部テスター向けのBeta App Review待ちを避けやすくなります。
 
 ## 実機QAチェックリスト
 

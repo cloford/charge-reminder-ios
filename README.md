@@ -199,29 +199,20 @@ docs/
 `docs/project-summary.html` は、プロジェクト検討内容をまとめた資料です。  
 同じ内容からPDF資料も作成しています。
 
-## Mac購入後にやること
+## 開発用Macでの運用
 
-次回、MacとXcode環境を用意した後に行う作業です。
+このリポジトリは、開発用MacからCLIでUnit Test、Archive、TestFlightアップロードを行います。内部テスターグループ `Kusodomo` はXcodeビルドの自動配信を有効にしているため、通常はCLIアップロード後に内部テスターへ配信されます。
 
-1. GitHubからこのリポジトリをcloneする。
-2. Xcodeで `ChargeReminder.xcodeproj` を開く。
-3. Apple Developer Teamを設定する。
-4. ビルドする。
-5. ビルドエラーがあれば修正する。
-6. iPhone SE 第2世代に実機インストールする。
-7. 以下を確認する。
-   - 通知許可ダイアログ
-   - 指定時刻のローカル通知
-   - 通知ON/OFF
-   - バッテリー残量表示
-   - 充電状態表示
-   - アプリ復帰時の状態更新
+```sh
+git pull --ff-only origin main
+scripts/upload-testflight.sh
+```
 
 テスト、GitHub Actions、TestFlight配布の具体的な手順は `docs/testing.md` にまとめています。GitHub ActionsはUnit Testのみ実行し、TestFlightアップロードは開発用Mac上で `scripts/upload-testflight.sh` から明示的に行います。
 
 ## 現時点の注意
 
-シミュレータ向けのビルド、Unit Test、実機インストール、TestFlightへのアップロードは確認済みです。
-外部テスター配布は、初回Beta App Reviewの承認待ちです。通知を含む実機QAは承認後に友人のiPhoneでも確認します。
+シミュレータ向けのビルド、Unit Test、実機インストール、TestFlightへのCLIアップロード、内部テスター配布は確認済みです。
+内部テスターはApp Store Connectユーザーとして管理し、友人の権限は対象アプリのみに限定します。
 
-次の開発マイルストーンは、初回Beta App Reviewの承認後に友人を外部テスターへ招待し、通知とバッテリー取得を含む実機QAを進めることです。
+次の開発マイルストーンは、内部テスター環境で通知とバッテリー取得を含む実機QAを継続することです。
