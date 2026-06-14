@@ -44,6 +44,20 @@ TestFlight用ビルドは、ローカルMacのCLIからアップロードしま�
 scripts/upload-testflight.sh
 ```
 
+CLIからXcodeのApple Account資格情報を使えない場合は、App Store Connect APIキーを環境変数で指定します。
+
+```sh
+export ASC_KEY_ID="XXXXXXXXXX"
+export ASC_ISSUER_ID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+export ASC_KEY_PATH="$HOME/Downloads/AuthKey_XXXXXXXXXX.p8"
+
+scripts/upload-testflight.sh
+```
+
+`.p8`ファイルはリポジトリにコミットしません。
+
+CLIアップロードでは、ローカルKeychainに `Apple Distribution` 証明書があり、`APP_STORE_PROFILE_NAME` と同名のApp Store用 provisioning profile がインストールされている必要があります。標準のprofile名は `ChargeReminder App Store` です。
+
 明示的なBuild番号を指定したい場合:
 
 ```sh
@@ -60,6 +74,12 @@ scripts/upload-testflight.sh --archive-only
 
 ```sh
 scripts/upload-testflight.sh --skip-tests
+```
+
+Archiveやアップロードだけ再試行したい場合:
+
+```sh
+scripts/upload-testflight.sh --no-bump --skip-tests
 ```
 
 Build番号だけを上げたい場合:
@@ -92,6 +112,8 @@ Xcode GUIでアップロードする場合は、次の手順でも同じです�
 7. 承認後、自分と友人のApple IDメールアドレスを外部テスターに追加するか、公開リンクを共有する。
 
 外部テスター向けの初回ビルドはBeta App Reviewが必要です。承認後はTestFlightアプリからインストールできます。
+
+TODO: 友人をApp Store Connectの内部テスターにするか検討する。内部テスターは審査待ちを避けやすい一方で、App Store Connect上の権限付与が必要です。
 
 ## 実機QAチェックリスト
 
